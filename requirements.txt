@@ -1,0 +1,11 @@
+streamlit
+google-genai
+python-dotenv
+fastapi
+uvicorn
+pydantic
+tavily-python
+apscheduler
+pandas
+numpy
+supabase

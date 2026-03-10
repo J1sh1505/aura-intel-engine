@@ -88,16 +88,15 @@ async def generate_news_feed(request: NewsTriggerRequest):
         if response.candidates and response.candidates[0].content.parts:
             news_content = response.candidates[0].content.parts[0].text
             
-            # D. Insert directly into the Supabase Chat
+          # D. Insert directly into the Supabase Chat
             print(f"💾 Saving news to group {request.group_id}...")
             supabase.table("group_messages").insert({
                 "group_id": request.group_id,
                 "content": news_content,
-                "is_bot": True,
-                "sender_id": "00000000-0000-0000-0000-000000000000", # The Bot's new ID
+                "is_ai_intel": True, # Changed from is_bot to match the React code!
                 "created_at": datetime.datetime.now().isoformat()
             }).execute()
-            
+
             return {"status": "success", "message": "News posted to chat", "content": news_content}
         else:
             raise HTTPException(status_code=500, detail="No response from Gemini.")

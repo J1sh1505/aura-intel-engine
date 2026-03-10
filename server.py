@@ -5,7 +5,6 @@ from google import genai
 from google.genai import types
 from supabase import create_client, Client
 import os
-import json
 import datetime
 from dotenv import load_dotenv
 
@@ -14,6 +13,21 @@ load_dotenv()
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# ==========================================
+# 🛑 CRITICAL FIX: GLOBAL AUTHENTICATION
+# We must create the key file BEFORE the API starts accepting requests.
+# ==========================================
+google_json_string = os.getenv("GOOGLE_CREDENTIALS_JSON")
+if google_json_string:
+    print("🔐 Server Boot: Setting up Google Cloud Auth globally...")
+    key_path = "/tmp/gcp_keys.json"
+    with open(key_path, "w") as f:
+        f.write(google_json_string)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+else:
+    print("🖥️ Server Boot: No JSON found, falling back to local credentials...")
+# ==========================================
 
 # Initialize Supabase Client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -29,7 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Request Model (Matches what your Supabase Bridge sends)
+# 3. Request Model
 class NewsTriggerRequest(BaseModel):
     topic: str
     group_id: str
@@ -43,33 +57,14 @@ async def generate_news_feed(request: NewsTriggerRequest):
         raise HTTPException(status_code=500, detail="GOOGLE_CLOUD_PROJECT not set in .env")
 
     try:
-        # A. Setup Gemini Client with Authentication (The Bulletproof Method)
-        google_json_string = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        # A. Setup Gemini Client 
+        # (It will automatically find the /tmp/gcp_keys.json file we made at the top!)
+        client = genai.Client(
+            vertexai=True, 
+            project=PROJECT_ID, 
+            location="us-central1"
+        )
         
-        if google_json_string:
-            print("🔐 Creating temporary Google Cloud credential file...")
-            # 1. Write the JSON string from Render into a temporary file
-            key_path = "/tmp/gcp_keys.json"
-            with open(key_path, "w") as f:
-                f.write(google_json_string)
-            
-            # 2. Tell Google's internal systems exactly where this file is
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
-            
-            # 3. Now initialize the client normally; Google will find the file automatically!
-            client = genai.Client(
-                vertexai=True, 
-                project=PROJECT_ID, 
-                location="us-central1"
-            )
-        else:
-            print("🖥️ Running locally: Using default Google Cloud credentials...")
-            client = genai.Client(
-                vertexai=True, 
-                project=PROJECT_ID, 
-                location="us-central1"
-            )
-
         google_search_tool = types.Tool(google_search=types.GoogleSearch())
 
         # B. The Strict "News Reporter" Prompt
@@ -101,14 +96,14 @@ async def generate_news_feed(request: NewsTriggerRequest):
             config=types.GenerateContentConfig(
                 tools=[google_search_tool],
                 response_modalities=["TEXT"],
-                temperature=0.3 # Lower temperature keeps formatting strict
+                temperature=0.3
             )
         )
 
         if response.candidates and response.candidates[0].content.parts:
             news_content = response.candidates[0].content.parts[0].text
             
-            # D. Insert directly into the Supabase Chat!
+            # D. Insert directly into the Supabase Chat
             print(f"💾 Saving news to group {request.group_id}...")
             supabase.table("group_messages").insert({
                 "group_id": request.group_id,

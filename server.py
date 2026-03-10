@@ -14,21 +14,6 @@ PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-# ==========================================
-# 🛑 CRITICAL FIX: GLOBAL AUTHENTICATION
-# We must create the key file BEFORE the API starts accepting requests.
-# ==========================================
-google_json_string = os.getenv("GOOGLE_CREDENTIALS_JSON")
-if google_json_string:
-    print("🔐 Server Boot: Setting up Google Cloud Auth globally...")
-    key_path = "/tmp/gcp_keys.json"
-    with open(key_path, "w") as f:
-        f.write(google_json_string)
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
-else:
-    print("🖥️ Server Boot: No JSON found, falling back to local credentials...")
-# ==========================================
-
 # Initialize Supabase Client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -43,12 +28,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 3. Request Model
 class NewsTriggerRequest(BaseModel):
     topic: str
     group_id: str
 
-# 4. The Single, Focused News Endpoint
 @app.post("/research")
 async def generate_news_feed(request: NewsTriggerRequest):
     print(f"📥 Received News Trigger for topic: {request.topic} | Group: {request.group_id}")
@@ -58,7 +41,7 @@ async def generate_news_feed(request: NewsTriggerRequest):
 
     try:
         # A. Setup Gemini Client 
-        # (It will automatically find the /tmp/gcp_keys.json file we made at the top!)
+        # (Google automatically finds the /etc/secrets/gcp_keys.json file we linked!)
         client = genai.Client(
             vertexai=True, 
             project=PROJECT_ID, 

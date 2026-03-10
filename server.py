@@ -89,15 +89,15 @@ async def generate_news_feed(request: NewsTriggerRequest):
             news_content = response.candidates[0].content.parts[0].text
             
             # D. Insert directly into the Supabase Chat
-            # sender_id is omitted as we enabled 'Allow Nullable' in Supabase
-            print(f"Saving news to group {request.group_id}...")
+            print(f"💾 Saving news to group {request.group_id}...")
             supabase.table("group_messages").insert({
                 "group_id": request.group_id,
                 "content": news_content,
                 "is_bot": True,
+                "sender_id": "00000000-0000-0000-0000-000000000000", # The Bot's new ID
                 "created_at": datetime.datetime.now().isoformat()
             }).execute()
-
+            
             return {"status": "success", "message": "News posted to chat", "content": news_content}
         else:
             raise HTTPException(status_code=500, detail="No response from Gemini.")

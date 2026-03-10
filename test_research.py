@@ -1,25 +1,28 @@
-import os
-from dotenv import load_dotenv
+import requests
 
-load_dotenv()
-# Fallback to None or a default if the env var isn't found
-AGENT_ID = os.getenv("VERTEX_AGENT_ID")
+# 1. Point this directly to your live cloud AI
+URL = "https://aura-intel-engine.onrender.com/research"
 
-# Define a query that requires external knowledge (Google Search)
-PROMPT = "What are the key new features in the Google Gemini 1.5 Pro update? Please summarize them in bullet points."
+# 2. The data we are sending (Matches what Supabase will eventually send)
+# NOTE: To see this test show up in your actual React chat, 
+# replace "test-group-id-123" with a real group ID from your Supabase table!
+payload = {
+    "topic": "Artificial Intelligence Startups",
+    "group_id": "test-group-id-123" 
+}
+
+print(f"🚀 Sending trigger to Render API: {URL}")
+print(f"📦 Payload: {payload}")
+print("⏳ Waiting for the AI to format the news...")
 
 try:
-    print(f"Researching: {PROMPT} ...")
-    print("(This might take a few seconds as it reads websites)")
+    # 3. Send the POST request to Render
+    response = requests.post(URL, json=payload)
     
-    # Initialize the remote agent and execute the query
-    agent = reasoning_engines.ReasoningEngine(AGENT_ID)
-    response = agent.query(prompt=PROMPT)
-    
-    # Output the synthesized results
-    print("\n--- Research Report ---")
-    print(response)
-    print("-----------------------")
+    # 4. Print the result
+    print(f"\n✅ Status Code: {response.status_code}")
+    print("📝 Response from Render:")
+    print(response.json())
     
 except Exception as e:
-    print(f"Error: {e}")
+    print(f"\n❌ Error connecting to Render: {e}")

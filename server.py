@@ -3,8 +3,10 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
+from google.oauth2 import service_account  # Added for Render authentication
 from supabase import create_client, Client
 import os
+import json  # Added to parse the JSON key
 import datetime
 from dotenv import load_dotenv
 
@@ -42,12 +44,27 @@ async def generate_news_feed(request: NewsTriggerRequest):
         raise HTTPException(status_code=500, detail="GOOGLE_CLOUD_PROJECT not set in .env")
 
     try:
-        # A. Setup Gemini Client
-        client = genai.Client(
-            vertexai=True, 
-            project=PROJECT_ID, 
-            location="us-central1"
-        )
+        # A. Setup Gemini Client with Authentication
+        google_json_string = os.getenv("GOOGLE_CREDENTIALS_JSON")
+        
+        if google_json_string:
+            print("🔐 Using provided Google Cloud Service Account JSON...")
+            creds_dict = json.loads(google_json_string)
+            credentials = service_account.Credentials.from_service_account_info(creds_dict)
+            client = genai.Client(
+                vertexai=True, 
+                project=PROJECT_ID, 
+                location="us-central1",
+                credentials=credentials
+            )
+        else:
+            print("🖥️ Running locally: Using default Google Cloud credentials...")
+            client = genai.Client(
+                vertexai=True, 
+                project=PROJECT_ID, 
+                location="us-central1"
+            )
+
         google_search_tool = types.Tool(google_search=types.GoogleSearch())
 
         # B. The Strict "News Reporter" Prompt
@@ -87,7 +104,7 @@ async def generate_news_feed(request: NewsTriggerRequest):
             news_content = response.candidates[0].content.parts[0].text
             
             # D. Insert directly into the Supabase Chat!
-            print(f"Saving news to group {request.group_id}...")
+            print(f"💾 Saving news to group {request.group_id}...")
             supabase.table("group_messages").insert({
                 "group_id": request.group_id,
                 "content": news_content,

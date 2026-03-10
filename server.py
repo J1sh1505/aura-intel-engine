@@ -55,22 +55,25 @@ async def generate_news_feed(request: NewsTriggerRequest):
         # B. The Strict "News Reporter" Prompt
         today = datetime.date.today().strftime("%B %d, %Y")
         prompt = f"""
-        You are an AI Daily News Anchor.
+        ACT AS: The AUTOMATED COMMUNITY INTEL agent.
         CURRENT DATE: {today}
-        TOPIC TO COVER: {request.topic}
+        TOPIC: {request.topic}
         
-        INSTRUCTIONS: 
-        1. Search Google for the latest breaking news regarding the TOPIC.
-        2. Select the top 1 or 2 most important recent news stories.
-        3. DO NOT output conversational text, strategic analysis, or standard bullet points.
-        4. Format EACH story exactly like the template below using Markdown blockquotes (>) to create a 'Big Box' effect.
+        CRITICAL INSTRUCTION: 
+        1. DO NOT say "Okay," "I will find," or "Here is the news." 
+        2. DO NOT provide conversational chatter.
+        3. START your response immediately with the 🚀 symbol.
+        4. YOU MUST use the exact format below:
 
-        REQUIRED TEMPLATE:
-        > **[Headline of the Article]**
-        > [A concise, 2-3 sentence engaging summary of the article]
-        > 
-        > **URL:** [Insert actual link to the article]
-        > **Credit:** [Author Name or "Unknown Author"]
+        🚀 **INTELLIGENCE UPDATE: {request.topic.upper()}**
+        
+        ### [Breaking News Headline 1]
+        [A concise, 3-sentence summary of the news article]
+        
+        ### [Breaking News Headline 2]
+        [A concise, 3-sentence summary of the news article]
+        
+        🔗 **Source:** [Insert one actual news URL here]
         """
 
         # C. Generate the News

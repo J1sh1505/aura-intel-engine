@@ -3,10 +3,9 @@ from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from google import genai
 from google.genai import types
-from google.oauth2 import service_account  # Added for Render authentication
 from supabase import create_client, Client
 import os
-import json  # Added to parse the JSON key
+import json
 import datetime
 from dotenv import load_dotenv
 
@@ -44,18 +43,24 @@ async def generate_news_feed(request: NewsTriggerRequest):
         raise HTTPException(status_code=500, detail="GOOGLE_CLOUD_PROJECT not set in .env")
 
     try:
-        # A. Setup Gemini Client with Authentication
+        # A. Setup Gemini Client with Authentication (The Bulletproof Method)
         google_json_string = os.getenv("GOOGLE_CREDENTIALS_JSON")
         
         if google_json_string:
-            print("🔐 Using provided Google Cloud Service Account JSON...")
-            creds_dict = json.loads(google_json_string)
-            credentials = service_account.Credentials.from_service_account_info(creds_dict)
+            print("🔐 Creating temporary Google Cloud credential file...")
+            # 1. Write the JSON string from Render into a temporary file
+            key_path = "/tmp/gcp_keys.json"
+            with open(key_path, "w") as f:
+                f.write(google_json_string)
+            
+            # 2. Tell Google's internal systems exactly where this file is
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+            
+            # 3. Now initialize the client normally; Google will find the file automatically!
             client = genai.Client(
                 vertexai=True, 
                 project=PROJECT_ID, 
-                location="us-central1",
-                credentials=credentials
+                location="us-central1"
             )
         else:
             print("🖥️ Running locally: Using default Google Cloud credentials...")

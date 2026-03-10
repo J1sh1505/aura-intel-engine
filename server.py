@@ -28,20 +28,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 3. Request Model
 class NewsTriggerRequest(BaseModel):
     topic: str
     group_id: str
 
+# 4. The Single, Focused News Endpoint
 @app.post("/research")
 async def generate_news_feed(request: NewsTriggerRequest):
-    print(f"📥 Received News Trigger for topic: {request.topic} | Group: {request.group_id}")
+    print(f"Received News Trigger for topic: {request.topic} | Group: {request.group_id}")
 
     if not PROJECT_ID:
         raise HTTPException(status_code=500, detail="GOOGLE_CLOUD_PROJECT not set in .env")
 
     try:
         # A. Setup Gemini Client 
-        # (Google automatically finds the /etc/secrets/gcp_keys.json file we linked!)
+        # Render automatically points to /etc/secrets/gcp_keys.json via GOOGLE_APPLICATION_CREDENTIALS
         client = genai.Client(
             vertexai=True, 
             project=PROJECT_ID, 
@@ -72,7 +74,7 @@ async def generate_news_feed(request: NewsTriggerRequest):
         """
 
         # C. Generate the News
-        print("🔍 Searching Google & Formatting News Box...")
+        print("Searching Google & Formatting News Box...")
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
             contents=prompt,
@@ -87,7 +89,8 @@ async def generate_news_feed(request: NewsTriggerRequest):
             news_content = response.candidates[0].content.parts[0].text
             
             # D. Insert directly into the Supabase Chat
-            print(f"💾 Saving news to group {request.group_id}...")
+            # sender_id is omitted as we enabled 'Allow Nullable' in Supabase
+            print(f"Saving news to group {request.group_id}...")
             supabase.table("group_messages").insert({
                 "group_id": request.group_id,
                 "content": news_content,
@@ -100,9 +103,10 @@ async def generate_news_feed(request: NewsTriggerRequest):
             raise HTTPException(status_code=500, detail="No response from Gemini.")
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
+    # Use port 8000 for local development; Render will override this with its own port
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -8,7 +8,7 @@ URL = "https://aura-intel-engine.onrender.com/research"
 # replace "test-group-id-123" with a real group ID from your Supabase table!
 payload = {
     "topic": "Artificial Intelligence Startups",
-    "group_id": "test-group-id-123" 
+    "group_id": "a86e304a-b259-44c8-8ee6-c8966b0e4621" 
 }
 
 print(f"🚀 Sending trigger to Render API: {URL}")
